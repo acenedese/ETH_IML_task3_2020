@@ -22,7 +22,7 @@ Y = pd.DataFrame(train['Active'])
 # ------------------------------------
 model_type = 'mlp'  # choose between svm, mlp, cnn
 np.random.seed(seed=123)
-epochs = 10
+epochs = 5
 shuffle = False
 split = 0.8
 
@@ -68,10 +68,11 @@ if model_type == 'mlp':
 
     model.compile(optimizer=keras.optimizers.Adam(),
                   loss=keras.losses.binary_crossentropy,
-                  metrics=[keras.metrics.categorical_accuracy])
+                  metrics=[keras.metrics.categorical_accuracy]
+                  )
 elif model_type == "mlp2":
     model = MLPClassifier(hidden_layer_sizes=(100,), activation='relu',
-                          solver='lbfgs', verbose=1, tol=0.00005)
+                          solver='adam', verbose=1, tol=0.00005)
 elif model_type == "svm":
     model = svm.LinearSVC(C=1e-3, tol=1e-2, class_weight='balanced', verbose=0)
 elif model_type == 'cnn':
@@ -91,7 +92,8 @@ elif model_type == 'cnn':
 
     model.compile(optimizer=keras.optimizers.Adam(),
                   loss=keras.losses.binary_crossentropy,
-                  metrics=[keras.metrics.categorical_accuracy])
+                  metrics=[keras.metrics.categorical_accuracy]
+                  )
 
 # ------------------------------------
 # -------------- TRAIN ---------------
@@ -109,17 +111,41 @@ Y_train = Y.iloc[0:train_size, :]
 X_val = X.iloc[train_size + 1:, :]
 Y_val = Y.iloc[train_size + 1:, :]
 
+weights_0 = np.zeros([100, 84])
+weights_1 = np.zeros([1, 100])
+bias_0 = np.zeros([100, 1])
+bias_1 = np.zeros([1, 1])
 # train
 if model_type == 'mlp':
-    model.fit(X_train, Y_train, epochs=epochs, verbose=1, class_weight='balanced')
-    pd.DataFrame(model.layers[0].get_weights()[0].transpose()).to_csv('../data/weights_keras_0.csv', header=False, index=False, float_format='%.3f')
-    pd.DataFrame(model.layers[1].get_weights()[0]).to_csv('../data/weights_keras_1.csv', header=False, index=False, float_format='%.3f')
+    model.fit(X_train, Y_train, epochs=epochs, verbose=1, class_weight=None, use_multiprocessing=True,
+              batch_size=200)
     Y_val_pred = model.predict(X_val)
+    #next is useful only for debug
+    weights_0 = model.layers[0].get_weights()[0].transpose()
+    bias_0 = model.layers[0].get_weights()[1].transpose()
+    weights_1 = model.layers[1].get_weights()[0]
+    bias_1 = model.layers[1].get_weights()[1]
+    pd.DataFrame(weights_0).to_csv('../data/weights_keras_0.csv', header=False, index=False, float_format='%.3f')
+    pd.DataFrame(weights_1).to_csv('../data/weights_keras_1.csv', header=False, index=False, float_format='%.3f')
+    mul_0 = np.matmul(weights_0, np.array(X_val).transpose())
+    output_0 = np.maximum( mul_0 + bias_0[:,None], 0)
+    mul_1 = np.matmul(weights_1.transpose(), output_0)
+    output_1 = np.maximum( mul_1 + bias_1[:,None], 0)
+    print()
 elif model_type == 'mlp2':
     model.fit(X_train, Y_train)
-    pd.DataFrame(model.coefs_[0]).to_csv('../data/weights_sklearn_0.csv', header=False, index=False, float_format='%.3f')
-    pd.DataFrame(model.coefs_[1]).to_csv('../data/weights_sklearn_1.csv', header=False, index=False, float_format='%.3f')
     Y_val_pred = model.predict(X_val)
+    weights_0 = model.coefs_[0].transpose()
+    bias_0 = model.intercepts_[0].transpose()
+    weights_1 = model.coefs_[1]
+    bias_1 = model.intercepts_[1]
+    pd.DataFrame(weights_0).to_csv('../data/weights_sklearn_0.csv', header=False, index=False, float_format='%.3f')
+    pd.DataFrame(weights_1).to_csv('../data/weights_sklearn_1.csv', header=False, index=False, float_format='%.3f')
+    mul_0 = np.matmul(weights_0, np.array(X_val).transpose())
+    output_0 = np.maximum( mul_0 + bias_0[:,None], 0)
+    mul_1 = np.matmul(weights_1.transpose(), output_0)
+    output_1 = np.maximum( mul_1 + bias_1[:,None], 0)
+    print()
 elif model_type == 'svm':
     model.fit(X_train, Y_train)
     Y_temp = np.array([model.decision_function(X_val)])

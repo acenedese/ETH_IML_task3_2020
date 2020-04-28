@@ -10,6 +10,7 @@ from threading import Lock, Thread
 import keras
 from keras.models import Sequential
 from keras.layers import Dense, Conv1D, Conv2D, MaxPooling1D, Activation, Dropout, Flatten, LSTM, TimeDistributed
+from keras.regularizers import l2
 
 train = pd.DataFrame(pd.read_csv("../data/train.csv"))
 X_test_raw = pd.DataFrame(pd.read_csv("../data/test.csv"))
@@ -21,7 +22,7 @@ Y = pd.DataFrame(train['Active'])
 # ------------------------------------
 # --------- PARAMETERS ---------------
 # ------------------------------------
-model_type = 'mlp'  # choose between svm, mlp, cnn
+model_type = 'mlp2'  # choose between svm, mlp, cnn
 np.random.seed(seed=123)
 epochs = 30
 shuffle = False
@@ -62,11 +63,12 @@ if model_type == 'mlp':
     model = Sequential()
     model.add(Dense(100,
                     activation='relu',
-                    input_dim=X.shape[1]))
+                    input_dim=X.shape[1],
+                    activity_regularizer=l1(7e-6)))
     # model.add(Dropout(0.25))
-    # model.add(Dense(15, activation='relu'))
+    # model.add(Dense(3, activation='relu'))
     # model.add(Dropout(0.25))
-    model.add(Dense(1, activation='relu'))
+    model.add(Dense(1, activation='relu', activity_regularizer=None))
 
     model.compile(optimizer=keras.optimizers.Adadelta(),
                   loss=keras.losses.binary_crossentropy,
@@ -74,8 +76,8 @@ if model_type == 'mlp':
                   metrics=[keras.metrics.categorical_accuracy]
                   )
 elif model_type == "mlp2":
-    model = MLPClassifier(hidden_layer_sizes=(50,), activation='relu',
-                          solver='adam', verbose=1, tol=0.00005)
+    model = MLPClassifier(hidden_layer_sizes=(60,), activation='relu', #50, reg=8e-3 ==> 0.893
+                          solver='adam', verbose=1, tol=5e-5, alpha=5e-4)
 elif model_type == "svm":
     model = svm.LinearSVC(C=1e-3, tol=1e-2, class_weight='balanced', verbose=0)
 elif model_type == 'cnn':
@@ -85,15 +87,15 @@ elif model_type == 'cnn':
     model.add(Conv1D(30, kernel_size=5,
                      activation='relu',
                      input_shape=input_shape))
-    model.add(Conv1D(30, 3, activation='relu'))
+    # model.add(Conv1D(30, 3, activation='relu'))
     model.add(MaxPooling1D(pool_size=2))
-    model.add(Dropout(0.25))
+    # model.add(Dropout(0.25))
     model.add(Flatten())
-    model.add(Dense(30, activation='relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(1, activation='softmax'))
+    model.add(Dense(10, activation='relu'))
+    # model.add(Dropout(0.5))
+    model.add(Dense(1, activation='relu'))
 
-    model.compile(optimizer=keras.optimizers.Adam(),
+    model.compile(optimizer=keras.optimizers.sgd(learning_rate=1e-3),
                   loss=keras.losses.binary_crossentropy,
                   metrics=[keras.metrics.categorical_accuracy]
                   )
@@ -116,13 +118,13 @@ Y_val = Y.iloc[train_size + 1:, :]
 
 # define class weights
 class_weights = class_weight.compute_class_weight(
-               'balanced',
-                np.unique(Y),
-                np.array(Y).flatten())
+    'balanced',
+    np.unique(Y),
+    np.array(Y).flatten())
 # train
 if model_type == 'mlp':
     model.fit(X_train, Y_train, epochs=epochs, verbose=1, class_weight=class_weights, use_multiprocessing=False,
-              batch_size=200)
+              batch_size=200, )
     Y_val_pred = model.predict(X_val)
     # next is useful only for debug
     weights_0 = model.layers[0].get_weights()[0].transpose()
@@ -157,7 +159,7 @@ elif model_type == 'svm':
 elif model_type == 'cnn':
     X_train = np.array(X_train).reshape(X_train.shape[0], 1, X_train.shape[1])
     X_train = X_train.transpose(0, 2, 1)
-    model.fit(X_train, Y_train, epochs=epochs, verbose=1, class_weight='balanced')
+    model.fit(X_train, Y_train, epochs=epochs, verbose=1, class_weight=class_weights)
     X_val = np.array(X_val).reshape(X_val.shape[0], 1, X_val.shape[1])
     X_val = X_val.transpose(0, 2, 1)
     Y_val_pred = model.predict(X_val)

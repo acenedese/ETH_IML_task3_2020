@@ -3,6 +3,7 @@ import numpy as np
 import sklearn.metrics as skmetrics
 from sklearn import svm
 from sklearn.neural_network import MLPClassifier
+from sklearn.utils import class_weight
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge
 from threading import Lock, Thread
@@ -22,7 +23,7 @@ Y = pd.DataFrame(train['Active'])
 # ------------------------------------
 model_type = 'mlp'  # choose between svm, mlp, cnn
 np.random.seed(seed=123)
-epochs = 5
+epochs = 30
 shuffle = False
 split = 0.8
 
@@ -37,6 +38,7 @@ except OSError:
     X_test_raw = pd.DataFrame(pd.read_csv("../data/test.csv"))
     amms = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U', 'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V']
     amms_dict = dict(zip(amms, range(21)))
+
 
     def encode_to_num(amm_str):
         code_num = np.zeros([len(amms) * 4])
@@ -63,15 +65,16 @@ if model_type == 'mlp':
                     input_dim=X.shape[1]))
     # model.add(Dropout(0.25))
     # model.add(Dense(15, activation='relu'))
-    #model.add(Dropout(0.25))
+    # model.add(Dropout(0.25))
     model.add(Dense(1, activation='relu'))
 
-    model.compile(optimizer=keras.optimizers.Adam(),
+    model.compile(optimizer=keras.optimizers.Adadelta(),
                   loss=keras.losses.binary_crossentropy,
+                  #                 loss = skmetrics.log_loss,
                   metrics=[keras.metrics.categorical_accuracy]
                   )
 elif model_type == "mlp2":
-    model = MLPClassifier(hidden_layer_sizes=(100,), activation='relu',
+    model = MLPClassifier(hidden_layer_sizes=(50,), activation='relu',
                           solver='adam', verbose=1, tol=0.00005)
 elif model_type == "svm":
     model = svm.LinearSVC(C=1e-3, tol=1e-2, class_weight='balanced', verbose=0)
@@ -111,16 +114,17 @@ Y_train = Y.iloc[0:train_size, :]
 X_val = X.iloc[train_size + 1:, :]
 Y_val = Y.iloc[train_size + 1:, :]
 
-weights_0 = np.zeros([100, 84])
-weights_1 = np.zeros([1, 100])
-bias_0 = np.zeros([100, 1])
-bias_1 = np.zeros([1, 1])
+# define class weights
+class_weights = class_weight.compute_class_weight(
+               'balanced',
+                np.unique(Y),
+                np.array(Y).flatten())
 # train
 if model_type == 'mlp':
-    model.fit(X_train, Y_train, epochs=epochs, verbose=1, class_weight=None, use_multiprocessing=True,
+    model.fit(X_train, Y_train, epochs=epochs, verbose=1, class_weight=class_weights, use_multiprocessing=False,
               batch_size=200)
     Y_val_pred = model.predict(X_val)
-    #next is useful only for debug
+    # next is useful only for debug
     weights_0 = model.layers[0].get_weights()[0].transpose()
     bias_0 = model.layers[0].get_weights()[1].transpose()
     weights_1 = model.layers[1].get_weights()[0]
@@ -128,9 +132,9 @@ if model_type == 'mlp':
     pd.DataFrame(weights_0).to_csv('../data/weights_keras_0.csv', header=False, index=False, float_format='%.3f')
     pd.DataFrame(weights_1).to_csv('../data/weights_keras_1.csv', header=False, index=False, float_format='%.3f')
     mul_0 = np.matmul(weights_0, np.array(X_val).transpose())
-    output_0 = np.maximum( mul_0 + bias_0[:,None], 0)
+    output_0 = np.maximum(mul_0 + bias_0[:, None], 0)
     mul_1 = np.matmul(weights_1.transpose(), output_0)
-    output_1 = np.maximum( mul_1 + bias_1[:,None], 0)
+    output_1 = np.maximum(mul_1 + bias_1[:, None], 0)
     print()
 elif model_type == 'mlp2':
     model.fit(X_train, Y_train)
@@ -142,9 +146,9 @@ elif model_type == 'mlp2':
     pd.DataFrame(weights_0).to_csv('../data/weights_sklearn_0.csv', header=False, index=False, float_format='%.3f')
     pd.DataFrame(weights_1).to_csv('../data/weights_sklearn_1.csv', header=False, index=False, float_format='%.3f')
     mul_0 = np.matmul(weights_0, np.array(X_val).transpose())
-    output_0 = np.maximum( mul_0 + bias_0[:,None], 0)
+    output_0 = np.maximum(mul_0 + bias_0[:, None], 0)
     mul_1 = np.matmul(weights_1.transpose(), output_0)
-    output_1 = np.maximum( mul_1 + bias_1[:,None], 0)
+    output_1 = np.maximum(mul_1 + bias_1[:, None], 0)
     print()
 elif model_type == 'svm':
     model.fit(X_train, Y_train)

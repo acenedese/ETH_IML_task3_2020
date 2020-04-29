@@ -77,15 +77,15 @@ class_weights = class_weight.compute_class_weight(
     np.unique(Y),
     np.array(Y).flatten())
 
-layer_sizes = [60, 80, 100, 120, 130]
-alphas = [5e-5, 1e-4, 2e-4, 5e-4, 7e-4, 1e-3]
+layer_sizes = [165, 175, 185, 195]
+alphas = [3e-4 4e-4, 5e-4, 6e-4, 7e-4]
 matrix = pd.DataFrame(columns=alphas, index=layer_sizes)
 for alpha in alphas:
     for layer_size in layer_sizes:
         score = 0
         for _ in range(3):
             model = MLPClassifier(hidden_layer_sizes=(layer_size,), activation='relu', #50, reg=8e-3 ==> 0.893
-                                  solver='adam', verbose=1, tol=1e-6, alpha=alpha)
+                                  solver='adam', verbose=1, tol=3e-6, alpha=alpha, max_iter=500)
             # train
             model.fit(X_train, Y_train)
 
@@ -93,4 +93,4 @@ for alpha in alphas:
             Y_val_pred = model.predict(X_val)
             score = score + skmetrics.f1_score(Y_val, Y_val_pred > 0.5)/3
         matrix.loc[layer_size, alpha] = score
-matrix.to_csv("../data/parameters.csv")
+        matrix.to_csv("../data/parameters_4.csv")

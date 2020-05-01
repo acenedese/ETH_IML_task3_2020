@@ -8,8 +8,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge
 import threading
 from threading import Thread
-import multiprocessing
-from multiprocessing import Process
+
 import keras
 from keras.models import Sequential
 from keras.layers import Dense, Conv1D, Conv2D, MaxPooling1D, Activation, Dropout, Flatten, LSTM, TimeDistributed
@@ -81,19 +80,23 @@ layer_sizes = [600, 700]
 alphas = [1e-10, 5e-10]
 N = 3
 matrix = pd.DataFrame(data=0, columns=alphas, index=layer_sizes)
-lock = Lock()
+
+import multiprocessing
+from multiprocessing import Process
+
+lock = multiprocessing.Lock()
 
 
 def calc_one_profile(alpha, layer_size):
     X_train, Y_train, X_val, Y_val = read_and_build_dataset()
     score = 0
     model = MLPClassifier(hidden_layer_sizes=(layer_size,), activation='relu',  # 50, reg=8e-3 ==> 0.893
-                          solver='adam', verbose=1, tol=3e-9, alpha=alpha, max_iter=1000)
+                          solver='adam', verbose=0, tol=3e-9, alpha=alpha, max_iter=1000)
 
     # train
-    print(threading.current_thread().name + "started training\n")
+    print(multiprocessing.current_process().name + "started training\n")
     model.fit(X_train, np.ravel(Y_train))
-    print(threading.current_thread().name + "terminated training\n")
+    print(multiprocessing.current_process().name + "terminated training\n")
 
     # predict and eval
     lock.acquire()
@@ -109,7 +112,7 @@ for alpha in alphas:
             work_flows = work_flows + [
                 Process(target=calc_one_profile,
                        args=(alpha, layer_size),
-                       name='Process_' + str(layer_size) + '_' + str(alpha) + '_' + str(i))]
+                       name='Work_flow_' + str(layer_size) + '_' + str(alpha) + '_' + str(i))]
             work_flows[-1].start()
 
 for work_flow in work_flows:

@@ -7,7 +7,9 @@ from sklearn.utils import class_weight
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge
 import threading
-from threading import Lock, Thread
+from threading import Thread
+import multiprocessing
+from multiprocessing import Process
 import keras
 from keras.models import Sequential
 from keras.layers import Dense, Conv1D, Conv2D, MaxPooling1D, Activation, Dropout, Flatten, LSTM, TimeDistributed
@@ -100,15 +102,15 @@ def calc_one_profile(alpha, layer_size):
     matrix.to_csv("../data/parameters_9.csv")
     lock.release()
 
-threads = []
+work_flows = []
 for alpha in alphas:
     for layer_size in layer_sizes:
         for i in range(N):
-            threads = threads + [
-                Thread(target=calc_one_profile,
+            work_flows = work_flows + [
+                Process(target=calc_one_profile,
                        args=(alpha, layer_size),
-                       name='Thread_' + str(layer_size) + '_' + str(alpha) + '_' + str(i))]
-            threads[-1].start()
+                       name='Process_' + str(layer_size) + '_' + str(alpha) + '_' + str(i))]
+            work_flows[-1].start()
 
-for thread in threads:
-    thread.join()
+for work_flow in work_flows:
+    work_flow.join()

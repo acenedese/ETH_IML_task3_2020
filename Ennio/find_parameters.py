@@ -85,7 +85,7 @@ if __name__ == '__main__':
     import multiprocessing
     from multiprocessing import Process
 
-    lock = multiprocessing.Lock()
+    lock = threading.Lock()
 
 
     def calc_one_profile(alpha, layer_size):
@@ -94,10 +94,16 @@ if __name__ == '__main__':
         model = MLPClassifier(hidden_layer_sizes=(layer_size,), activation='relu',  # 50, reg=8e-3 ==> 0.893
                               solver='adam', verbose=0, tol=3e-9, alpha=alpha, max_iter=1000)
 
+        t = True
+        if t:
+            name = threading.current_thread().name
+        else:
+            name = multiprocessing.current_process().name
+
         # train
-        print(multiprocessing.current_process().name + "started training\n")
+        print(name + "started training\n")
         model.fit(X_train, np.ravel(Y_train))
-        print(multiprocessing.current_process().name + "terminated training\n")
+        print(name + "terminated training\n")
 
         # predict and eval
         lock.acquire()
@@ -111,7 +117,7 @@ if __name__ == '__main__':
         for layer_size in layer_sizes:
             for i in range(N):
                 work_flows = work_flows + [
-                    Process(target=calc_one_profile,
+                    Thread(target=calc_one_profile,
                            args=(alpha, layer_size),
                            name='Work_flow_' + str(layer_size) + '_' + str(alpha) + '_' + str(i))]
                 work_flows[-1].start()

@@ -54,7 +54,6 @@ except OSError:
     X.to_csv("../data/train_numeric.zip", compression='zip')
     X_test.to_csv("../data/test_numeric.zip", compression='zip')
 
-
 # ------------------------------------
 # -------------- TRAIN ---------------
 # ------------------------------------
@@ -80,17 +79,33 @@ class_weights = class_weight.compute_class_weight(
 layer_sizes = [500, 550, 600, 650, 700]
 alphas = [1e-10, 5e-10, 1e-9, 5e-9, 8e-9]
 matrix = pd.DataFrame(columns=alphas, index=layer_sizes)
+lock = Lock()
+
+
+def calc_one_profile(alpha, layer_size):
+    score = 0
+    for _ in range(3):
+        model = MLPClassifier(hidden_layer_sizes=(layer_size,), activation='relu',  # 50, reg=8e-3 ==> 0.893
+                              solver='adam', verbose=1, tol=3e-9, alpha=alpha, max_iter=1000)
+        # train
+        model.fit(X_train, Y_train)
+
+        # predict and eval
+        Y_val_pred = model.predict(X_val)
+        score = score + skmetrics.f1_score(Y_val, Y_val_pred > 0.5) / 3
+    lock.acquire()
+    matrix.loc[layer_size, alpha] = score
+    matrix.to_csv("../data/parameters_8.csv")
+    lock.release()
+
+threads = []
 for alpha in alphas:
     for layer_size in layer_sizes:
-        score = 0
-        for _ in range(3):
-            model = MLPClassifier(hidden_layer_sizes=(layer_size,), activation='relu', #50, reg=8e-3 ==> 0.893
-                                  solver='adam', verbose=1, tol=3e-9, alpha=alpha, max_iter=1000)
-            # train
-            model.fit(X_train, Y_train)
+        threads = threads + [
+            Thread(target=calc_one_profile,
+                   args=(alpha, layer_size),
+                   name='Thread_' + str(layer_size) + '_' + str(alpha))]
+        threads[-1].start()
 
-            # predict and eval
-            Y_val_pred = model.predict(X_val)
-            score = score + skmetrics.f1_score(Y_val, Y_val_pred > 0.5)/3
-        matrix.loc[layer_size, alpha] = score
-        matrix.to_csv("../data/parameters_8.csv")
+for thread in threads:
+    thread.join()

@@ -37,8 +37,8 @@ try:
 except OSError:
     print('Numeric dataset not found, calculating')
     X_test_raw = pd.DataFrame(pd.read_csv("../data/test.csv"))
-    amms = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'C', 'U', 'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V']
-    amms_dict = dict(zip(amms, range(21)))
+    amms = ['R', 'H', 'K', 'D', 'E', 'S', 'T', 'N', 'Q', 'U', 'C', 'G', 'P', 'A', 'I', 'L', 'M', 'F', 'W', 'Y', 'V']
+    amms_dict = dict(zip(amms, range(len(amms))))
 
 
     def encode_to_num(amm_str):
@@ -121,6 +121,9 @@ class_weights = class_weight.compute_class_weight(
     'balanced',
     np.unique(Y),
     np.array(Y).flatten())
+
+# build sample weights
+
 # train
 if model_type == 'mlp':
     model.fit(X_train, Y_train, epochs=epochs, verbose=1, class_weight=class_weights, use_multiprocessing=False,

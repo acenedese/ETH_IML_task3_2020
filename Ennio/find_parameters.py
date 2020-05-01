@@ -105,15 +105,16 @@ def calc_one_profile(alpha, layer_size):
     matrix.to_csv("../data/parameters_9.csv")
     lock.release()
 
-work_flows = []
-for alpha in alphas:
-    for layer_size in layer_sizes:
-        for i in range(N):
-            work_flows = work_flows + [
-                Process(target=calc_one_profile,
-                       args=(alpha, layer_size),
-                       name='Work_flow_' + str(layer_size) + '_' + str(alpha) + '_' + str(i))]
-            work_flows[-1].start()
+if __name__ == '__main__':
+    work_flows = []
+    for alpha in alphas:
+        for layer_size in layer_sizes:
+            for i in range(N):
+                work_flows = work_flows + [
+                    Process(target=calc_one_profile,
+                           args=(alpha, layer_size),
+                           name='Work_flow_' + str(layer_size) + '_' + str(alpha) + '_' + str(i))]
+                work_flows[-1].start()
 
-for work_flow in work_flows:
-    work_flow.join()
+    for work_flow in work_flows:
+        work_flow.join()

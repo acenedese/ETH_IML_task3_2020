@@ -1,0 +1,36 @@
+Sender: LSF System <lsfadmin@eu-g1-014-4>
+Subject: Job 120575960: <python3.7 ./find_parameters.py> in cluster <euler> Exited
+
+Job <python3.7 ./find_parameters.py> was submitted from host <eu-login-29> by user <efilicicc> in cluster <euler> at Fri May  1 11:34:51 2020
+Job was executed on host(s) <30*eu-g1-014-4>, in queue <normal.24h>, as user <efilicicc> in cluster <euler> at Fri May  1 11:34:57 2020
+</cluster/home/efilicicc> was used as the home directory.
+</cluster/home/efilicicc/3_task/data> was used as the working directory.
+Started at Fri May  1 11:34:57 2020
+Terminated at Fri May  1 11:34:58 2020
+Results reported at Fri May  1 11:34:58 2020
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+python3.7 ./find_parameters.py
+------------------------------------------------------------
+
+Exited with exit code 127.
+
+Resource usage summary:
+
+    CPU time :                                   0.08 sec.
+    Max Memory :                                 6 MB
+    Average Memory :                             -
+    Total Requested Memory :                     30720.00 MB
+    Delta Memory :                               30714.00 MB
+    Max Swap :                                   -
+    Max Processes :                              -
+    Max Threads :                                -
+    Run time :                                   27 sec.
+    Turnaround time :                            7 sec.
+
+The output (if any) follows:
+
+/cluster/shadow/.lsbatch/1588325691.120575960: line 8: python3.7: command not found

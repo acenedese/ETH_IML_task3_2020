@@ -1,18 +1,10 @@
 import pandas as pd
 import numpy as np
 import sklearn.metrics as skmetrics
-from sklearn import svm
 from sklearn.neural_network import MLPClassifier
 from sklearn.utils import class_weight
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.linear_model import LinearRegression, Ridge
 import threading
 from threading import Thread
-
-import keras
-from keras.models import Sequential
-from keras.layers import Dense, Conv1D, Conv2D, MaxPooling1D, Activation, Dropout, Flatten, LSTM, TimeDistributed
-from keras.regularizers import l2
 
 if __name__ == '__main__':
     train = pd.DataFrame(pd.read_csv("../data/train.csv"))
@@ -71,12 +63,6 @@ if __name__ == '__main__':
     # -------------- TRAIN ---------------
     # ------------------------------------
 
-    # define class weights
-    # class_weights = class_weight.compute_class_weight(
-    #     'balanced',
-    #     np.unique(Y),
-    #     np.array(Y).flatten())
-
     layer_sizes = [600, 700]
     alphas = [1e-10, 5e-10]
     N = 3
@@ -85,7 +71,12 @@ if __name__ == '__main__':
     import multiprocessing
     from multiprocessing import Process
 
-    lock = threading.Lock()
+    t = True    #True -> multithreading, False -> multiprocessing
+
+    if t:
+        lock = threading.Lock()
+    else:
+        lock = multiprocessing.Lock()
 
 
     def calc_one_profile(alpha, layer_size):
@@ -94,7 +85,6 @@ if __name__ == '__main__':
         model = MLPClassifier(hidden_layer_sizes=(layer_size,), activation='relu',  # 50, reg=8e-3 ==> 0.893
                               solver='adam', verbose=0, tol=3e-9, alpha=alpha, max_iter=1000)
 
-        t = True
         if t:
             name = threading.current_thread().name
         else:
@@ -116,10 +106,15 @@ if __name__ == '__main__':
     for alpha in alphas:
         for layer_size in layer_sizes:
             for i in range(N):
-                work_flows = work_flows + [
-                    Thread(target=calc_one_profile,
+                if t:
+                    work_flow = Thread(target=calc_one_profile,
                            args=(alpha, layer_size),
-                           name='Work_flow_' + str(layer_size) + '_' + str(alpha) + '_' + str(i))]
+                           name='Work_flow_' + str(layer_size) + '_' + str(alpha) + '_' + str(i))
+                else:
+                    work_flow = Process(target=calc_one_profile,
+                           args=(alpha, layer_size),
+                           name='Work_flow_' + str(layer_size) + '_' + str(alpha) + '_' + str(i))
+                work_flows = work_flows + [work_flow]
                 work_flows[-1].start()
 
     for work_flow in work_flows:

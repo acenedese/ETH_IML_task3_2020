@@ -22,7 +22,7 @@ Y = pd.DataFrame(train['Active'])
 # ------------------------------------
 # --------- PARAMETERS ---------------
 # ------------------------------------
-model_type = 'mlp2'  # choose between svm, mlp, cnn
+model_type = 'mlp2'  # choose between svm, mlp, mlp2, cnn
 np.random.seed(seed=123)
 epochs = 30
 shuffle = False
@@ -76,8 +76,8 @@ if model_type == 'mlp':
                   metrics=[keras.metrics.categorical_accuracy]
                   )
 elif model_type == "mlp2":
-    model = MLPClassifier(hidden_layer_sizes=(60,), activation='relu', #50, reg=8e-3 ==> 0.893
-                          solver='adam', verbose=1, tol=5e-5, alpha=5e-4)
+    model = MLPClassifier(hidden_layer_sizes=(600,), activation='relu', #50, reg=8e-3 ==> 0.893
+                          solver='adam', verbose=1, tol=3e-9, alpha=1e-10)
 elif model_type == "svm":
     model = svm.LinearSVC(C=1e-3, tol=1e-2, class_weight='balanced', verbose=0)
 elif model_type == 'cnn':
